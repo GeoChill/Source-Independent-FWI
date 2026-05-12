@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import os
+from scipy.signal import resample
+import segyio
 
 
 def analisis_spektrum_source(source, dt, zoom_x=None):
@@ -262,3 +264,64 @@ def create_video_from_images(image_folder, output_video_path, fps):
     os.rename(temp_video, output_video_path)
 
     print(f"Video berhasil dibuat di: {output_video_path}")
+
+
+
+
+def resample_seismic(dt_old, dt_new, data_seis, c=1) :
+    # contoh
+    dt_new = dt_new # ms
+    dt_old = dt_old # ms
+
+    # data shape: (shots, time, traces)
+    # misalnya:
+    # data.shape = (100, 1500, 240)
+
+    nshots, nt_old, ntraces = data_seis.shape
+
+    # durasi total
+    tmax = (nt_old - 1) * dt_old
+
+    # jumlah sample baru
+    nt_new = int(tmax / dt_new) + c
+
+    # resample pada axis waktu
+    data_res = resample(data_seis, nt_new, axis=1)
+
+    return data_res
+
+
+
+class SeismicDataset:
+
+    def __init__(self, traces, headers, dt):
+
+        self.traces = traces              # (ntrace, nt)
+        self.headers = headers            # pandas dataframe
+        self.dt = dt
+
+    # =========================
+    # Sorting
+    # =========================
+    def sort(self, keys):
+
+        idx = self.headers.sort_values(keys).index
+
+        self.headers = self.headers.loc[idx].reset_index(drop=True)
+        self.traces = self.traces[idx]
+
+    # =========================
+    # Shot gather
+    # =========================
+    def get_gather_by_header(self, header_name, header_number):
+        
+
+
+        mask = self.headers[header_name] == header_number
+
+        gather = self.traces[mask]
+
+        gather_headers = self.headers[mask]
+
+        return gather, gather_headers
+
